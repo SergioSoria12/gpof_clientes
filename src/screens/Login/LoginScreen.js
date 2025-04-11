@@ -1,19 +1,46 @@
 import React, { useState} from "react";
 import { View, Text, TextInput, TouchableOpacity, Alert } from "react-native";
-import styles from "../Login/styles";
+import styles from "./styles";
+import { useNavigation } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function LoginScreen() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const navigation = useNavigation();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (username.trim() === '' || password.trim() === '') {
       Alert.alert("Error", "Por favor, completa todos los campos.");
       return;
     }
-    
-    // Aquí puedes agregar la lógica de autenticación
-    Alert.alert("Éxito", "Inicio de sesión exitoso");
+  
+    try {
+      const response = await fetch('https://siminfo.es/augen/AppPacientes/login.php', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: `usuario=${encodeURIComponent(username)}&contrasena=${encodeURIComponent(password)}`
+      });
+  
+      const data = await response.json();
+  
+      if (data.status === 'ok') {
+        // Guardamos token, id y nombre completo (en este ejemplo simulamos que llega el nombre en la respuesta)
+        await AsyncStorage.setItem('token', data.token);
+        await AsyncStorage.setItem('idpaciente', data.idpaciente.toString());
+        await AsyncStorage.setItem('nombre', data.nombre); // Si luego lo pasas desde el backend, usa data.nombre
+  
+        Alert.alert("Éxito", "Inicio de sesión exitoso");
+        navigation.replace('Home');
+      } else {
+        Alert.alert("Error", data.mensaje || "Error de autenticación");
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      Alert.alert("Error", "No se pudo conectar con el servidor");
+    }
   };
   
   return (

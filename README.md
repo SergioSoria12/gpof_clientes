@@ -3,7 +3,7 @@
   <img src="assets/images/logo.png" width="200" alt="GPOF Clientes Logo">
 </p>
 
-# gpof_clientes# GPOF Clientes App
+#  GPOF Clientes App
 
 Aplicación móvil desarrollada con **React Native** y **Expo** para la gestión de clientes, pensada para clínicas oftalmológicas.
 
@@ -64,13 +64,10 @@ assets/
 
 ## 🛠️ Tecnologías utilizadas
 
-- React Native
-
-- Expo
-
-- React Navigation
-
-- react-native-animatable
+- [React Native](https://reactnative.dev/)
+- [Expo](https://expo.dev/)
+- [React Navigation](https://reactnavigation.org/)
+- [React Native Animatable](https://github.com/oblador/react-native-animatable)
 
 ## 📲 Generar APK para compartir
 
@@ -93,5 +90,4 @@ Cuando termine, te dará un enlace para descargar el .apk y compartirlo con otro
 
 ## 👨‍💻 Desarrollado por
 
-Sergio Soria
-@SergioSoria12
+**[Sergio Soria](https://github.com/SergioSoria12)**
