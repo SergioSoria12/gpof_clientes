@@ -68,7 +68,7 @@ export default function HomeScreen() {
   
     const Bienvenida = () => (
       <View style={styles.saludo}>
-        <Text style={styles.saludoTexto}>Hola {nombre}</Text>
+        <Text style={styles.saludoTexto}>Bienvenido {nombre}</Text>
         <Text style={styles.ayudaTexto}>¿En qué podemos ayudarte?</Text>
       </View>
     );
