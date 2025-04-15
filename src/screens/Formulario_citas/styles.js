@@ -73,23 +73,86 @@ export default StyleSheet.create({
     fontSize: 16,
   },
   citaItem: {
-    backgroundColor: '#e0f0ff',
-    padding: 15,
-    borderRadius: 8,
-    marginTop: 10,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    backgroundColor: '#e6f0ff',
+    padding: 12,
+    borderRadius: 10,
+    marginBottom: 10,
   },
-  citaTexto: {
+  modalOverlay: {
     flex: 1,
-    fontSize: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
+  
+  modalVentana: {
+    backgroundColor: '#fff',
+    width: '85%',
+    borderRadius: 16,
+    padding: 20,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 8,
+  },
+  
+  modalTitulo: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#25476a',
+    marginBottom: 15,
+  },
+  
+  modalCitaCard: {
+    width: '100%',
+    backgroundColor: '#e6f0ff',
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  
+  citaTexto: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  
   botonAñadir: {
     backgroundColor: '#25476a',
-    paddingVertical: 10,
-    paddingHorizontal: 15,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
     borderRadius: 8,
-    marginLeft: 10,
+  },
+  
+  botonTexto: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  
+  botonCerrar: {
+    marginTop: 10,
+  },
+  
+  botonCerrarTexto: {
+    color: '#25476a',
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+  inputError: {
+    borderColor: 'red',
+    borderWidth: 1,
+  },
+  errorTexto: {
+    color: 'red',
+    fontSize: 12,
+    marginTop: 4,
+    marginLeft: 4,
   },
 });

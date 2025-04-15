@@ -1,33 +1,27 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert, Modal } from 'react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { Picker } from '@react-native-picker/picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import styles from './styles';
 
 export default function FormularioCitaScreen({ route, navigation }) {
-  const { setProximasCitas,  citaOriginal, indiceModificar, proximasCitas } = route.params;
+  const { setProximasCitas,  citaOriginal, indiceModificar } = route.params;
+  const clinicas = [
+    { idclinica: 'Denia', nombre: 'Denia - Carrer de la Vía, 34d - Bajo' },
+    { idclinica: 'Moraira', nombre: 'Moraira - Plaza del Palangre, 3' }
+  ];
 
-  // Funcion para formatear fecha 
+  // Funcion para formatear fecha completa
   const formatearFechaCompleta = (fechaStr, horaStr) => {
-    const [year, month, day] = fechaStr.split('-');
+    if (!fechaStr || !horaStr) return "Fecha u hora inválida";
+  
+    const [year, month, day] = fechaStr.split("-");
     const meses = [
       'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
       'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
     ];
     return `${parseInt(day)} de ${meses[parseInt(month) - 1]} de ${year} a las ${horaStr}`;
-  };
-
-  // Funcion para comprobar si la hora esta dentro del rango
-  const horaDentroDeRango = (hora, desde, hasta) => {
-    const [h, m] = hora.split(':').map(Number);
-    const [hd, md] = desde.split(':').map(Number);
-    const [hh, mh] = hasta.split(':').map(Number);
-  
-    const minutos = h * 60 + m;
-    const minDesde = hd * 60 + md;
-    const minHasta = hh * 60 + mh;
-  
-    return minutos >= minDesde && minutos <= minHasta;
   };
   
   const [paciente, setPaciente] = useState(
@@ -52,41 +46,40 @@ export default function FormularioCitaScreen({ route, navigation }) {
         }
   );
 
+   //Función para marcar los campos como error al insertar mal el texto
+   const [errores, setErrores] = useState({
+    dni: false,
+    telefono: false,
+    email: false,
+   });
   const [mostrarCalendario, setMostrarCalendario] = useState(false);
   const [mostrarDesde, setMostrarDesde] = useState(false);
   const [mostrarHasta, setMostrarHasta] = useState(false);
-  const [mostrarCitas, setMostrarCitas] = useState(false);
   const [disponibles, setDisponibles] = useState([]);
+   //Funcion para el modal de mostrar las citas disponibles
+   const [modalVisible, setModalVisible] = useState(false);
 
-  const formatFecha = (date) => {
+
+ 
+
+   //Funciones de validación en los campos del formulario
+   const validarDNI = (dni) => /^[0-9]{8}[A-Za-z]$/.test(dni);
+   const validarTelefono = (telefono) => /^[0-9]{9,}$/.test(telefono);
+   const validarEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+   const formatFecha = (date) => {
     return date.toISOString().split("T")[0]; // "2025-04-24"
   };
 
-  const simularCitas = () => {
-    const diaSeleccionado = formatFecha(paciente.fecha);
+  const simularCitas = async () => {  
+    const citasRecibidas = await obtenerCitasDisponiblesDesdeBackend();
 
-    //Citas simuladas en varios dias
-    const simuladas = [
-        { fecha: '2025-04-22', hora: '13:25', tipo: paciente.tipo },
-        { fecha: '2025-04-23', hora: '14:15', tipo: paciente.tipo },
-        { fecha: '2025-04-23', hora: '15:30', tipo: paciente.tipo },
-        { fecha: '2025-04-24', hora: '10:00', tipo: paciente.tipo },
-        { fecha: '2025-04-24', hora: '11:45', tipo: paciente.tipo },
-    ];
-
-    // Formato fecha seleccionada
-    const citasFiltradas = simuladas.filter(cita =>
-        cita.fecha === diaSeleccionado &&
-        horaDentroDeRango(cita.hora, paciente.desde, paciente.hasta)
-    );
-
-    if (citasFiltradas.length === 0) {
-        Alert.alert("Sin disponibilidad", "No hay citas disponibles, seleccione otro día/hora");
-        setDisponibles([]);
-        setMostrarCitas(false);
+    if (citasRecibidas.length === 0) {
+      Alert.alert("Sin disponibilidad", "No hay citas disponibles, seleccione otro día/hora");
+      setDisponibles([]);
+      setModalVisible(false);
     } else {
-        setDisponibles(citasFiltradas);
-        setMostrarCitas(true);
+      setDisponibles(citasRecibidas);
+      setModalVisible(true);
     }
   };
 
@@ -115,18 +108,198 @@ export default function FormularioCitaScreen({ route, navigation }) {
     navigation.goBack();
   };
 
+ 
+  //Función para validar que todo el formulario esta ok y activa el botón de ver las citas
+  const formularioValido = () => {
+    return (
+      validarDNI(paciente.dni) &&
+      validarTelefono(paciente.telefono) &&
+      validarEmail(paciente.email) &&
+      paciente.tipo &&
+      paciente.clinica &&
+      paciente.doctor &&
+      paciente.aseguradora &&
+      paciente.fecha &&
+      paciente.desde &&
+      paciente.hasta
+    );
+  };
+
+  
+  // 👇 ESTADOS PARA DATOS DE LA API
+  const [doctoresAPI, setDoctoresAPI] = useState([]);
+  const [aseguradorasAPI, setAseguradorasAPI] = useState([]);
+
+  // 👇 LLAMADA A LA API AL ABRIR FORMULARIO
+  useEffect(() => {
+    const obtenerDatos = async () => {
+      try {
+        const doctores = await fetchDoctores();
+        const aseguradoras = await fetchAseguradoras();
+        setDoctoresAPI(doctores);
+        setAseguradorasAPI(aseguradoras);
+      } catch (err) {
+        console.error("Error cargando datos:", err);
+      }
+    };
+    obtenerDatos();
+  }, []);
+
+  // 🧪 FUNCIONES PARA PEDIR DATOS A LA API
+  const fetchDoctores = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+  
+      if (!token) {
+        throw new Error("Token no encontrado");
+      }
+  
+      const formData = new FormData();
+      formData.append('token', token);
+  
+      const response = await fetch('https://siminfo.es/augen/AppPacientes/get_doctores.php', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Error en la petición: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Doctores recibidos:", data);
+      return data.doctores;
+    } catch (error) {
+      console.error("❌ Error al obtener doctores:", error.message);
+      return [];
+    }
+  };
+
+  const fetchAseguradoras = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+  
+      if (!token) {
+        throw new Error("Token no encontrado");
+      }
+  
+      const formData = new FormData();
+      formData.append('token', token);
+  
+      const response = await fetch('https://siminfo.es/augen/AppPacientes/get_aseguradoras.php', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Error en la petición: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Aseguradoras recibidas:", data);
+      return data.aseguradoras;
+    } catch (error) {
+      console.error("❌ Error al obtener aseguradoras:", error.message);
+      return [];
+    }
+  };
+
+  //Funcion para hacer la llamada al backend para recibir las citas disponibles
+  const obtenerCitasDisponiblesDesdeBackend = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+  
+      if (!token) {
+        throw new Error("Token no encontrado");
+      }
+  
+      const formData = new FormData();
+      formData.append('token', token);
+      formData.append('idclinica', paciente.clinica);
+      formData.append('idaseguradora', paciente.aseguradora);
+      formData.append('idempleado', paciente.doctor);
+      formData.append('fecha', formatFecha(paciente.fecha)); // YYYY-MM-DD
+      formData.append('desde', paciente.desde); // ej: "10:00"
+      formData.append('hasta', paciente.hasta); // ej: "16:00"
+
+      console.log("📦 Datos enviados al backend:");
+      for (let pair of formData.entries()) {
+        console.log(`${pair[0]}: ${pair[1]}`);
+      }
+        
+      const response = await fetch('https://siminfo.es/augen/AppPacientes/get_citas.php', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      if (!response.ok) {
+        throw new Error(`Error del servidor: ${response.status}`);
+      }
+      console.log(response);
+      const data = await response.json();
+      console.log("✅ Citas recibidas del backend:", data);
+  
+    // 🔁 Extraer fecha y hora por separado + añadir tipo desde el formulario
+    const citasFormateadas = (data.citas || []).map(cita => {
+      const [fecha, horaCompleta] = cita.fecha.split(" ");
+      const hora = horaCompleta?.slice(0, 5); // "10:00"
+
+      return {
+        ...cita,
+        fecha,
+        hora,
+        tipo: paciente.tipo // Le añadimos el tipo desde lo que seleccionó el paciente
+      };
+    });
+
+    return citasFormateadas;
+  
+    } catch (error) {
+      console.error("❌ Error al obtener citas disponibles:", error.message);
+      return [];
+    }
+  };
+
+ 
+
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
       <Text style={styles.titulo}>Pedir cita</Text>
 
       {['dni', 'telefono', 'nombre', 'apellidos', 'email'].map(campo => (
-        <TextInput
-          key={campo}
-          placeholder={campo.toUpperCase()}
-          style={styles.input}
-          value={paciente[campo]}
-          onChangeText={(text) => setPaciente({ ...paciente, [campo]: text })}
-        />
+        <View key={campo} style={{ marginBottom: 10 }}>
+          <TextInput
+            key={campo}
+            placeholder={campo.toUpperCase()}
+            style={[
+              styles.input,
+              errores[campo] && styles.inputError
+            ]}
+            value={paciente[campo]}
+            onChangeText={(text) => {
+              setPaciente({ ...paciente, [campo]: text });
+
+              //Validamos en tiempo real
+              if(campo === 'dni') {
+                setErrores((prev) => ({ ...prev, dni: !validarDNI(text) }));
+              }else if (campo === 'telefono') {
+                setErrores((prev) => ({ ...prev, telefono: !validarTelefono(text) }));
+              }else if (campo === 'email') {
+                setErrores((prev) => ({ ...prev, email: !validarEmail(text) }));
+              }
+            }}
+          />
+
+          {/*Mensaje de error debajo de los campos*/}
+          {errores[campo] && (
+            <Text style={styles.errorTexto}>
+            {campo === 'dni' && 'DNI inválido'}
+            {campo === 'telefono' && 'Teléfono inválido'}
+            {campo === 'email' && 'Email inválido'}
+            </Text>
+          )}
+        </View>
       ))}
 
       <Text style={styles.label}>Tipo de cita</Text>
@@ -138,7 +311,7 @@ export default function FormularioCitaScreen({ route, navigation }) {
         <Picker.Item label="Selecciona tipo de cita" value="" />
         <Picker.Item label="👣 Presencial" value="presencial" />
         <Picker.Item label="📞 Telefónica" value="telefonica" />
-        <Picker.Item label="🎥 Videollamada" value="videollamada" />
+        <Picker.Item label="👨‍💻 Videollamada" value="videollamada" />
       </Picker>
 
       <Text style={styles.label}>Clínica</Text>
@@ -148,8 +321,13 @@ export default function FormularioCitaScreen({ route, navigation }) {
         style={styles.picker}
       >
         <Picker.Item label="Selecciona clínica" value="" />
-        <Picker.Item label="Augen Denia - Denia, C/Marquesado 23" value="Denia" />
-        <Picker.Item label="Augen Alicante - Alicante, Av. Salamanca 10" value="Alicante" />
+        {clinicas.map((clinica) => (
+          <Picker.Item
+            key={clinica.idclinica}
+            label={clinica.nombre}
+            value={clinica.idclinica}
+          />
+        ))}
       </Picker>
 
       <Text style={styles.label}>Doctor</Text>
@@ -159,9 +337,13 @@ export default function FormularioCitaScreen({ route, navigation }) {
         style={styles.picker}
       >
         <Picker.Item label="Selecciona doctor" value="" />
-        <Picker.Item label="Dr. López" value="Dr. López" />
-        <Picker.Item label="Dra. Martínez" value="Dra. Martínez" />
-        <Picker.Item label="Dr. Ortega" value="Dr. Ortega" />
+        {doctoresAPI.map((doctor) => (
+          <Picker.Item
+            key={doctor.idempleado}
+            label={doctor.nombre}
+            value={doctor.idempleado}
+          />
+        ))}
       </Picker>
 
       <Text style={styles.label}>Aseguradora</Text>
@@ -171,10 +353,15 @@ export default function FormularioCitaScreen({ route, navigation }) {
         style={styles.picker}
       >
         <Picker.Item label="Selecciona aseguradora" value="" />
-        <Picker.Item label="Sanitas" value="Sanitas" />
-        <Picker.Item label="Adeslas" value="Adeslas" />
-        <Picker.Item label="DKV" value="DKV" />
-        <Picker.Item label="Mapfre" value="Mapfre" />
+        {aseguradorasAPI
+          .filter(item => item.aseguradora !== null)
+          .map((aseg) => (
+            <Picker.Item
+              key={aseg.idaseguradora}
+              label={aseg.aseguradora}
+              value={aseg.idaseguradora}
+            />
+        ))}
       </Picker>
 
       <Text style={styles.label}>Fecha</Text>
@@ -232,18 +419,51 @@ export default function FormularioCitaScreen({ route, navigation }) {
         />
       )}
 
-      <TouchableOpacity style={styles.botonCita} onPress={simularCitas}>
+      <TouchableOpacity 
+        style={[
+          styles.botonCita,
+        !formularioValido() && {backgroundColor: '#ccc'}
+        ]}
+         disabled={!formularioValido()}
+         onPress={simularCitas}>
         <Text style={styles.botonTexto}>Buscar citas disponibles</Text>
       </TouchableOpacity>
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalVentana}>
+            <Text style={styles.modalTitulo}>Citas disponibles</Text>
 
-      {mostrarCitas && disponibles.map((cita, index) => (
-        <View key={index} style={styles.citaItem}>
-          <Text style={styles.citaTexto}>{formatearFechaCompleta(cita.fecha, cita.hora)} - {cita.tipo}</Text>
-          <TouchableOpacity style={styles.botonAñadir} onPress={() => confirmarCita(cita)}>
-            <Text style={styles.botonTexto}>Añadir</Text>
-          </TouchableOpacity>
+            <ScrollView style={{ maxHeight: 300 }}>
+              {disponibles.map((cita, index) => (
+                <View key={index} style={styles.modalCitaCard}>
+                  <Text style={styles.citaTexto}>
+                    {formatearFechaCompleta(cita.fecha, cita.hora)} - {cita.tipo}
+                  </Text>
+                  <TouchableOpacity
+                    onPress={() => confirmarCita(cita)}
+                    style={styles.botonAñadir}
+                  >
+                    <Text style={styles.botonTexto}>Pedir</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+
+            <TouchableOpacity
+              onPress={() => setModalVisible(false)}
+              style={styles.botonCerrar}
+            >
+              <Text style={styles.botonCerrarTexto}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-      ))}
+      </Modal>
     </ScrollView>
+    
   );
 }

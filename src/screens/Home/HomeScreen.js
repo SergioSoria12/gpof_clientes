@@ -36,7 +36,7 @@ export default function HomeScreen() {
           text: "Cerrar sesión",
           style: "destructive",
           onPress: async () => {
-            await AsyncStorage.clear();
+            await AsyncStorage.multiRemove(['token', 'idpaciente', 'nombre']);//Borramos solo los datos de sesion para que se mantenga el usuario recordado al iniciar sesion de nuevo
             navigation.replace("Login");
           },
         },

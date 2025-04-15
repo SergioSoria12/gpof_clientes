@@ -38,4 +38,12 @@ export default StyleSheet.create({
         fontSize: 16,
         fontWeight: 'bold',
     },
+    recordarContainer: {
+        marginVertical: 10,
+        alignItems: 'center',
+      },
+      recordarTexto: {
+        fontSize: 16,
+        color: '#25476a',
+      },
 });

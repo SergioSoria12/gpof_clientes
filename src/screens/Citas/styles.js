@@ -10,6 +10,7 @@ export default StyleSheet.create({
     fontSize: 22,
     fontWeight: 'bold',
     marginBottom: 15,
+    marginLeft: 10,
     color: '#25476a',
   },
   sinCitas: {
@@ -23,10 +24,16 @@ export default StyleSheet.create({
     marginTop: 10,
   },
   card: {
-    backgroundColor: '#f0f8ff',
+    backgroundColor: '#e6f0ff',
     borderRadius: 10,
     padding: 15,
-    marginBottom: 15,
+    marginHorizontal: 10,
+    marginVertical: 10,
+    elevation: 4, // sombra en Android
+    shadowColor: '#000', // sombra en iOS
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
     position: 'relative',
   },
   fecha: {
@@ -39,18 +46,27 @@ export default StyleSheet.create({
     color: '#25476a',
     fontSize: 15,
     fontWeight: '600',
-    marginBottom: 5,
+    marginBottom: 4,
   },
   iconoTipo: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
+    marginBottom: 4,
   },
   tipoTexto: {
     fontSize: 14,
     color: '#333',
     marginLeft: 8,
+  },
+  infoFila: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: 4,
+  },
+  infoTexto: {
+    fontSize: 14,
+    color: '#555',
   },
   botonCita: {
     backgroundColor: '#25476a',

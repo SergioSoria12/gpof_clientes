@@ -51,11 +51,25 @@ export default function CitasScreen() {
                 size={18}
                 color="#25476a"
               />
-              <Text style={styles.tipoTexto}>{item.tipo.charAt(0).toUpperCase() + item.tipo.slice(1)}</Text>
+              <Text style={styles.tipoTexto}>
+                {item.tipo.charAt(0).toUpperCase() + item.tipo.slice(1)}
+              </Text>
             </View>
         
-            <Text>{item.doctor}</Text>
-            <Text>{item.clinica} / {item.aseguradora}</Text>
+            <View style={styles.infoFila}>
+              <Ionicons name="person-outline" size={18} color="#555" />
+              <Text style={styles.infoTexto}>{item.doctor}</Text>
+            </View>
+
+            <View style={styles.infoFila}>
+              <Ionicons name="home-outline" size={18} color="#555" />
+              <Text style={styles.infoTexto}>{item.clinica}</Text>
+            </View>
+
+            <View style={styles.infoFila}>
+              <Ionicons name="shield-checkmark-outline" size={18} color="#555" />
+              <Text style={styles.infoTexto}>{item.aseguradora}</Text>
+            </View>
         
             <TouchableOpacity
               style={styles.botonOpciones}
