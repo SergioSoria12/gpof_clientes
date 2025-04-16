@@ -36,7 +36,16 @@ export default function HomeScreen() {
           text: "Cerrar sesión",
           style: "destructive",
           onPress: async () => {
-            await AsyncStorage.multiRemove(['token', 'idpaciente', 'nombre']);//Borramos solo los datos de sesion para que se mantenga el usuario recordado al iniciar sesion de nuevo
+            await AsyncStorage.multiRemove(['token', 'idpaciente', 'nombre']);//Borramos solo seseión
+            
+            // ✅ Log para comprobar si las citas siguen guardadas
+            const citasGuardadas = await AsyncStorage.getItem('citas');
+            if (citasGuardadas) {
+              console.log("📌 Citas guardadas localmente tras logout:", JSON.parse(citasGuardadas));
+            } else {
+              console.log("⚠️ No hay citas guardadas localmente tras logout");
+            }
+
             navigation.replace("Login");
           },
         },

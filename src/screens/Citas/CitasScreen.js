@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Modal, Alert } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import styles from './styles';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 
 export default function CitasScreen() {
   const navigation = useNavigation();
@@ -19,6 +22,24 @@ export default function CitasScreen() {
     ];
     return `${parseInt(day)} de ${meses[parseInt(month) - 1]} de ${year} a las ${horaStr}`;
   };
+
+  //Funcion para cargar las citas guardadas al abrir la pantalla citas
+  useEffect(() => {
+    const cargarCitas = async () => {
+      try {
+        const guardadas = await AsyncStorage.getItem('citas');
+        if (guardadas) {
+          console.log("📂 Citas cargadas localmente al hacer login:", JSON.parse(guardadas));
+          setProximasCitas(JSON.parse(guardadas));
+        } else {
+          console.log("📂 No hay citas guardadas localmente");
+        }
+      } catch (err) {
+        console.error("❌ Error al cargar citas:", err);
+      }
+    };
+    cargarCitas();
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -130,11 +151,45 @@ export default function CitasScreen() {
                                 { text: 'No', style: 'cancel' },
                                 {
                                     text: 'Sí',
-                                    onPress: () => {
+                                    onPress: async () => {
+                                      try {
                                         const nuevas = [...proximasCitas];
                                         nuevas.splice(indiceCitaSeleccionada, 1);
+
+                                        // 👉 Guardamos en local
                                         setProximasCitas(nuevas);
+                                        await AsyncStorage.setItem('citas', JSON.stringify(nuevas)); // 👈 ACTUALIZA LOCAL
+                                        console.log("✅ Cita eliminada y actualizado en local");
+
+                                        // ✅ (OPCIONAL) Enviar al backend cuando la API esté lista
+                                        /*
+                                        const token = await AsyncStorage.getItem('token');
+                                        const idPaciente = await AsyncStorage.getItem('idpaciente');
+                                        const cita = citaSeleccionada;
+
+                                        const formData = new FormData();
+                                        formData.append('token', token);
+                                        formData.append('idpaciente', idPaciente);
+                                        formData.append('idcalendario', cita.idcalendario); // o lo que use tu backend
+
+                                        const response = await fetch('https://TU_API_ELIMINAR_CITA.php', {
+                                          method: 'POST',
+                                          body: formData,
+                                        });
+
+                                        const data = await response.json();
+                                        if (data.status !== 'ok') {
+                                          console.warn("⚠️ Error del backend al eliminar cita:", data);
+                                        } else {
+                                          console.log("✅ Cita eliminada también en el servidor");
+                                        }
+                                        */
+
                                         setMenuVisible(false);
+                                      }catch(error) {
+                                        console.error("❌ Error al eliminar cita:", error);
+                                        Alert.alert("Error", "Hubo un problema al eliminar la cita.");
+                                      }
                                     },
                                 },
                             ]

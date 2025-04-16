@@ -8,8 +8,8 @@ import styles from './styles';
 export default function FormularioCitaScreen({ route, navigation }) {
   const { setProximasCitas,  citaOriginal, indiceModificar } = route.params;
   const clinicas = [
-    { idclinica: 'Denia', nombre: 'Denia - Carrer de la Vía, 34d - Bajo' },
-    { idclinica: 'Moraira', nombre: 'Moraira - Plaza del Palangre, 3' }
+    { idclinica: 'Denia', nombre: 'Clínica Denia - Carrer de la Vía, 34d - Bajo' },
+    { idclinica: 'Moraira', nombre: 'Clínica Moraira - Plaza del Palangre, 3' }
   ];
 
   // Funcion para formatear fecha completa
@@ -83,11 +83,18 @@ export default function FormularioCitaScreen({ route, navigation }) {
     }
   };
 
-  const confirmarCita = (cita) => {
+  const confirmarCita = async (cita) => {
+    const doctorSeleccionado = doctoresAPI.find(d => d.idempleado === paciente.doctor);
+    const aseguradoraSeleccionada = aseguradorasAPI.find(a => a.idaseguradora === paciente.aseguradora);
+    const clinicaSeleccionada = clinicas.find(c => c.idclinica === paciente.clinica);
+
     const nueva = {
       ...paciente,
       fecha: cita.fecha,
       hora: cita.hora,
+      doctor: doctorSeleccionado ? doctorSeleccionado.nombre : paciente.doctor,
+      aseguradora: aseguradoraSeleccionada ? aseguradoraSeleccionada.aseguradora : paciente.aseguradora,
+      clinica: clinicaSeleccionada ? clinicaSeleccionada.nombre : paciente.clinica,
       // Aseguramos campos explícitos en caso de que paciente no los tenga
       dni: paciente.dni || '',
       nombre: paciente.nombre || '',
@@ -95,14 +102,24 @@ export default function FormularioCitaScreen({ route, navigation }) {
       telefono: paciente.telefono || '',
       email: paciente.email || ''
     };
+    
+    // 🚫 Desactivamos la llamada al backend (la dejaré comentada para cuando esté lista)
+    //await enviarCitaAlBackend(nueva);
+
     setProximasCitas(prev => {
-        if (typeof indiceModificar === 'number') {
-          const copia = [...prev];
-          copia[indiceModificar] = nueva;
-          return copia;
-        } else {
-          return [...prev, nueva];
-        }
+      const actualizadas = typeof indiceModificar === 'number'
+        ? [...prev.slice(0, indiceModificar), nueva, ...prev.slice(indiceModificar + 1)]
+        : [...prev, nueva];
+
+        AsyncStorage.setItem('citas', JSON.stringify(actualizadas))// ✅ Guardamos localmente
+          .then(() => {
+            console.log("✅ Citas guardadas localmente:", actualizadas);
+          })
+          .catch(err => {
+            console.error("❌ Error guardando citas:", err);
+          });       
+    
+      return actualizadas;
     });
 
     navigation.goBack();
@@ -136,8 +153,23 @@ export default function FormularioCitaScreen({ route, navigation }) {
       try {
         const doctores = await fetchDoctores();
         const aseguradoras = await fetchAseguradoras();
+
         setDoctoresAPI(doctores);
         setAseguradorasAPI(aseguradoras);
+
+         // Si estamos editando una cita, convertimos los textos a IDs
+        if (citaOriginal) {
+          const doctor = doctores.find(d => d.nombre === citaOriginal.doctor);
+          const aseguradora = aseguradoras.find(a => a.aseguradora === citaOriginal.aseguradora);
+          const clinica = clinicas.find(c => c.nombre === citaOriginal.clinica);
+
+          setPaciente(prev => ({
+            ...prev,
+            doctor: doctor ? doctor.idempleado : '',
+            aseguradora: aseguradora ? aseguradora.idaseguradora : '',
+            clinica: clinica ? clinica.idclinica : '',
+          }));
+        }
       } catch (err) {
         console.error("Error cargando datos:", err);
       }
@@ -145,7 +177,7 @@ export default function FormularioCitaScreen({ route, navigation }) {
     obtenerDatos();
   }, []);
 
-  // 🧪 FUNCIONES PARA PEDIR DATOS A LA API
+  // 🧪 FUNCIONES PARA PEDIR DATOS A LA API (DOCTORES)
   const fetchDoctores = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -174,7 +206,7 @@ export default function FormularioCitaScreen({ route, navigation }) {
       return [];
     }
   };
-
+   // 🧪 FUNCIONES PARA PEDIR DATOS A LA API (ASEGURADORAS)
   const fetchAseguradoras = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -257,6 +289,44 @@ export default function FormularioCitaScreen({ route, navigation }) {
     } catch (error) {
       console.error("❌ Error al obtener citas disponibles:", error.message);
       return [];
+    }
+  };
+  //FUNCION PARA ENVIAR LAS CITAS GUARDADAS A LA API
+  const enviarCitaAlBackend = async (cita) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      const idpaciente = await AsyncStorage.getItem('idpaciente');
+  
+      if (!token || !idpaciente) {
+        throw new Error("Falta token o idpaciente");
+      }
+  
+      const formData = new FormData();
+      formData.append('token', token);
+      formData.append('idpaciente', idpaciente);
+      formData.append('dni', cita.dni);
+      formData.append('telefono', cita.telefono);
+      formData.append('nombre', cita.nombre);
+      formData.append('apellidos', cita.apellidos);
+      formData.append('email', cita.email);
+      formData.append('tipo', cita.tipo);
+      formData.append('clinica', cita.clinica);
+      formData.append('doctor', cita.doctor);
+      formData.append('aseguradora', cita.aseguradora);
+      formData.append('fecha', cita.fecha);
+      formData.append('hora', cita.hora);
+  
+      const response = await fetch('https://siminfo.es/augen/AppPacientes/guardar_cita.php', {
+        method: 'POST',
+        body: formData,
+      });
+  
+      const data = await response.json();
+      console.log("✅ Cita guardada en el backend:", data);
+  
+      return data;
+    } catch (error) {
+      console.error("❌ Error al guardar cita:", error.message);
     }
   };
 

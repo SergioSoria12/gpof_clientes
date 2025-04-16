@@ -3,12 +3,12 @@ import { StyleSheet } from 'react-native';
 export default StyleSheet.create({
     container: {
       flex: 1,
-      backgroundColor: 'white',
+      backgroundColor: '#fff',
     },
     header: {
       flexDirection: 'row',
       paddingVertical: 30,
-      
+      backgroundColor: '#fff',
       alignItems: 'center',
       justifyContent: 'space-between',
     },
@@ -27,6 +27,7 @@ export default StyleSheet.create({
     },
     saludo: {
         paddingLeft: 20,
+        backgroundColor: '#fff'
     },
     saludoTexto: {
         fontSize: 22,
